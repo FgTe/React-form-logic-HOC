@@ -1,0 +1,18 @@
+{
+  "name": "react-form-logic-hoc",
+  "version": "1.0.0",
+  "description": "It is a React Higher-Order Components that helpful to customize form controler.",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://githup.com/FgTe/React-form-logic-HOC.git"
+  },
+  "keywords": [
+    "form"
+  ],
+  "author": "FgTe",
+  "license": "ISC"
+}
