@@ -17,7 +17,6 @@ export default function withFormLogic (Component) {
             this.data = this.state.data;
             this.error = this.state.error;
             this.fields = [/*{id, name, value, error, instance}*/];
-            this.stateComputeInterval = null;
         }
         findField (id, start, callback) {
             let index = -1;
@@ -32,7 +31,7 @@ export default function withFormLogic (Component) {
             }
             return index;
         }
-        stateCompute (escapId) {
+        modifyState (escapId) {
             let data = {};
             let error = {};
             for ( let i = 0; i < this.fields.length; i++ ) {
@@ -69,24 +68,24 @@ export default function withFormLogic (Component) {
             this.findField(id, null, (index, field) => {
                 field.value = value;
                 field.error = error;
-                this.stateCompute();
+                this.modifyState();
             });
         }
         fieldAdd (id, name, instance) {
             this.fields.push({ id, name, value: instance.state.value || '', error: instance.state.error, instance });
-            this.stateCompute();
+            this.modifyState();
         }
         fieldRemove (id) {
             let index = this.findField(id);
             if ( index >= 0 ) {
                 this.fields.splice(index, 1);
             }
-            this.stateCompute();
+            this.modifyState();
         }
         fieldRename (id, name) {
             this.findField(id, null, (index, field) => {
                 field.name = name;
-                this.stateCompute();
+                this.modifyState();
             });
         }
         isValid () {
@@ -101,6 +100,9 @@ export default function withFormLogic (Component) {
         }
         validate () {
             let pass = true;
+            let promis = new Promise((resolve, reject) => {
+                
+            });
             for ( let index = 0; index < this.fields.length; index++ ) {
                 if ( this.fields[index].instance instanceof React.Component && typeof this.fields[index].instance.validate === 'function' ) {
                     if ( this.fields[index].instance.validate(this.fields[index].value) ) {
