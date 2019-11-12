@@ -1,10 +1,9 @@
 import React from 'react';
 
-import FormContext from './context';
 import warpField from './field';
 
 let baceTypeChack = {
-    email: () => /[^@]+@[^@]+\.[\w]/ ? null : '请输入正确的邮件地址'
+    email: () => /[^@]+@[^@]+\.[\w]/ ? null : 'email'
 };
 
 export default function withInputLogic (Component, externalTypeChack) {
@@ -12,38 +11,29 @@ export default function withInputLogic (Component, externalTypeChack) {
         ...baceTypeChack,
         ...externalTypeChack
     };
-    class Input extends React.PureComponent {
-        static contextType = FormContext;
-        static getDerivedStateFromProps (props, state) {
-            return {
-                value: props.hasOwnProperty('value') ? props.value : state.value
-            }
-        }
+    class Input extends React.Component {
         constructor (props) {
             super(props);
-            this.changeHandler = this.changeHandler.bind(this);
-            this.state = {
-                value: this.props.defaultValue || '',
-                error: null
-            };
+            this.changeHandle = this.changeHandle.bind(this);
+            this.value = this.props.defaultValue || '';
+            this.error = null;
         }
-        changeHandler (value) {
-            let error = this.validate(value);
-            this.setState({
-                value,
-                error
-            });
+        changeHandle (value) {
+            if ( !props.hasOwnProperty('value') ) {
+                this.value = value;
+                this.forceUpdate();
+            }
         }
         validate (value) {
             let error;
             if ( this.props.required && !value ) {
-                error = `请输入${this.props.label || ''}`
+                error = 'required';
             } else {
                 if ( this.props.validate ) {
                     if ( typeof this.props.validate === 'function' ) {
                         error = this.props.validate(value);
                     } else if ( this.props.validate instanceof RegExp ) {
-                        error = this.props.validate.test(value) ? null : `请输入正确的${this.props.label || ''}格式`;
+                        error = this.props.validate.test(value) ? null : 'pattern';
                     } else if ( typeof this.props.validate === 'string' ) {
                         if ( typeChack[this.props.validate] ) {
                             error = typeChack[this.props.validate](value);
@@ -51,19 +41,16 @@ export default function withInputLogic (Component, externalTypeChack) {
                     }
                 }
             }
-            this.context.dataChange(this.props.fieldId, value, error);
-            return error
-        }
-        componentDidUpdate (prevProps) {
-            if ( prevProps.value !== this.props.value ) {
-                this.changeHandler(this.props.value);
-            }
+            return error;
         }
         render () {
-            let { forwardedRef, validate, fieldId, value, ...rest } = this.props;
+            let { forwardedRef, fieldId, change, value, validate, ...rest } = this.props;
+            if ( this.props.hasOwnProperty('value') ) this.value = value;
+            this.error = this.validate(this.value);
+            this.props.change(this.value, this.error);
             return (
-                <Component ref={forwardedRef} changeHandler={this.changeHandler} value={this.state.value} error={this.state.error} {...rest}/>
-            )
+                <Component ref={forwardedRef} changeHandle={this.changeHandle} value={this.value} error={this.error} {...rest}/>
+            );
         }
     }
     return warpField(Input, 'input');

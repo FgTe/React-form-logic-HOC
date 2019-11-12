@@ -4,26 +4,37 @@ import FormContext from './context';
 let increments = 0;
 export default function wrapField (Component, type) {
     class Field extends React.PureComponent {
-        static contextType = FormContext;
         constructor (props) {
             super(props);
+            this.finalRender = this.finalRender.bind(this);
+            this.change = this.change.bind(this);
             this.id = `${type}[${increments++}]`;
             this.instance = React.createRef();
         }
         componentDidMount () {
-            this.context.fieldAdd(this.id, this.props.name || this.id, this.instance.current);
+            this.contextValue.fieldAdd(this.id, this.props.name, this.instance.current);
         }
         componentWillUnmount () {
-            this.context.fieldRemove(this.id);
+            this.contextValue.fieldRemove(this.id);
         }
         componentDidUpdate (prevProps) {
             if ( ( this.props.name || prevProps.name ) && this.props.name !== prevProps.name ) {
-                this.context.fieldRename(this.id, this.props.name || this.id);
+                this.contextValue.fieldRename(this.id, this.props.name);
             }
         }
+        change (value, error) {
+            this.contextValue.dataChange(this.id, value, error)
+        }
+        finalRender (context) {
+            this.contextValue = context
+            return <Component change={this.change} {...this.props} fieldId={this.id} ref={this.instance}/>
+        }
         render () {
-            let { name, ...rest } = this.props;
-            return <Component {...rest} fieldId={this.id} name={name || this.id} ref={this.instance}/>
+            return (
+                <FormContext.Consumer>
+                    {this.finalRender}
+                </FormContext.Consumer>
+            )
         }
     }
     return React.forwardRef((props, ref) => {

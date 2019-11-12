@@ -10,46 +10,53 @@ export default function withFormLogic (Component) {
             this.dataChange = this.dataChange.bind(this);
             this.fieldAdd = this.fieldAdd.bind(this);
             this.fieldRemove = this.fieldRemove.bind(this);
-            this.state = {
-                data: {},
-                error: {}
+            this.fieldRename = this.fieldRename.bind(this);
+            this.submit = this.submit.bind(this);
+            this.updateIsValid = () => {
+                this.forceUpdate();
+                this.updateID = null;
             };
-            this.data = this.state.data;
-            this.error = this.state.error;
-            this.fields = [/*{id, name, value, error, instance}*/];
+            this.fields = {/*id: {name, value, error, instance}*/};
+            this.updateID = null;
+            this.contextValue = {
+                dataChange: this.dataChange,
+                fieldAdd: this.fieldAdd,
+                fieldRemove: this.fieldRemove,
+                fieldRename: this.fieldRename,
+                submit: this.submit,
+                submitted: false,
+                isValid: true
+            };
         }
-        findField (id, start, callback) {
-            let index = -1;
-            for ( let i = start || 0; i < this.fields.length; i++ ) {
-                if ( this.fields[i].id === id ) {
-                    index = i;
-                    break;
-                }
+        componentWillUnmount () {
+            if ( this.updateID !== null ) {
+                clearTimeout(this.updateID);
             }
-            if ( index >= 0 ) {
-                typeof callback === 'function' && callback(index, this.fields[index]);
-            }
-            return index;
         }
-        modifyState (escapId) {
+        componentDidCatch () {
+            if ( this.updateID !== null ) {
+                clearTimeout(this.updateID);
+            }
+        }
+        get data () {
             let data = {};
-            let error = {};
-            for ( let i = 0; i < this.fields.length; i++ ) {
-                let field = this.fields[i];
-                if ( escapId === undefined || field !== escapId ) {
+            for ( let id in this.fields ) {
+                if ( this.fields.hasOwnProperty(id) && this.fields[id].name ) {
+                    let field = this.fields[id];
                     this.propertyMerge(data, field.name, field.value);
-                    this.propertyMerge(error, field.name, field.error);
                 }
             }
-            this.data = data;
-            this.error = error;
-            this.setState({
-                data,
-                error
-            });
-            if ( typeof this.props.onChange === 'function' ) {
-                this.props.onChange({ data, error });
+            return data;
+        }
+        get error () {
+            let error = {};
+            for ( let id in this.fields ) {
+                if ( this.fields.hasOwnProperty(id) && this.fields[id].error) {
+                    let field = this.fields[id];
+                    this.propertyMerge(error, field.name || id, field.error);
+                }
             }
+            return error;
         }
         propertyMerge (obj, key, value) {
             if ( value ) {
@@ -65,57 +72,70 @@ export default function withFormLogic (Component) {
             }
         }
         dataChange (id, value, error) {
-            this.findField(id, null, (index, field) => {
-                field.value = value;
-                field.error = error;
-                this.modifyState();
-            });
-        }
-        fieldAdd (id, name, instance) {
-            this.fields.push({ id, name, value: instance.state.value || '', error: instance.state.error, instance });
-            this.modifyState();
-        }
-        fieldRemove (id) {
-            let index = this.findField(id);
-            if ( index >= 0 ) {
-                this.fields.splice(index, 1);
-            }
-            this.modifyState();
-        }
-        fieldRename (id, name) {
-            this.findField(id, null, (index, field) => {
-                field.name = name;
-                this.modifyState();
-            });
-        }
-        isValid () {
-            let pass = true;
-            for ( let name in this.state.error ) {
-                if ( this.state.error.hasOwnProperty(name) && this.state.error ) {
-                    pass = false;
-                    break;
-                }
-            }
-            return pass;
-        }
-        validate () {
-            let pass = true;
-            let promis = new Promise((resolve, reject) => {
-                
-            });
-            for ( let index = 0; index < this.fields.length; index++ ) {
-                if ( this.fields[index].instance instanceof React.Component && typeof this.fields[index].instance.validate === 'function' ) {
-                    if ( this.fields[index].instance.validate(this.fields[index].value) ) {
-                        pass = false;
+            if ( this.fields.hasOwnProperty(id) ) {
+                let prevError = this.fields[id].error;
+                this.fields[id].value = value;
+                this.fields[id].error = error;
+                if ( error !== prevError ) {
+                    if ( error ) {
+                        if ( this.contextValue.isValid ) {
+                            this.setValid(false, false);
+                        }
+                    } else if ( !this.contextValue.isValid && Object.keys(this.error).length === 0 ) {
+                        this.setValid(true, false);
                     }
                 }
             }
-            return pass;
+        }
+        setValid (isValid, update) {
+            if ( this.contextValue.isValid !== isValid ) {
+                this.contextValue = {
+                    ...this.contextValue,
+                    isValid
+                };
+                if ( update ) {
+                    if ( this.updateID !== null ) {
+                        clearTimeout(this.updateID);
+                    }
+                    this.updateID = setTimeout(this.updateIsValid);
+                }
+            }
+        }
+        fieldAdd (id, name, instance) {
+            this.fields[id] = { name, value: instance.value, error: instance.error, instance };
+            if ( this.contextValue.isValid && Object.keys(this.error).length > 0 ) {
+                this.setValid(false, true);
+            }
+        }
+        fieldRemove (id) {
+            if ( this.fields.hasOwnProperty(id) ) {
+                delete this.fields[id];
+                if ( !this.contextValue.isValid && Object.keys(this.error).length === 0 ) {
+                    this.setValid(true, true);
+                }
+            }
+        }
+        fieldRename (id, name) {
+            if ( this.fields.hasOwnProperty(id) ) {
+                this.fields[id].name = name
+            }
+        }
+        submit () {
+            if ( !this.contextValue.submitted ) {
+                this.contextValue = {
+                    ...this.contextValue,
+                    submitted: true
+                };
+                this.forceUpdate();
+            }
+            if ( this.contextValue.isValid && this.props.onSubmit instanceof Function ) {
+                this.props.onSubmit(this.data);
+            }
         }
         render () {
             return (
-                <FormContext.Provider value={{ ...this.state, dataChange: this.dataChange, fieldAdd: this.fieldAdd, fieldRemove: this.fieldRemove, fieldRename: this.fieldRename }}>
-                    <Component data={this.state.data} error={this.state.error} {...this.props}/>
+                <FormContext.Provider value={this.contextValue}>
+                    <Component {...this.props}/>
                 </FormContext.Provider>
             )
         }

@@ -1,10 +1,12 @@
 import React from 'react';
 
 export default React.createContext({
-    data: {},
-    error: {},
+    validate () {},
     dataChange () {},
-    errorOccur () {},
     fieldAdd () {},
-    fieldRemove () {}
+    fieldRemove () {},
+    fieldRename () {},
+    submit () {},
+    submitted: false,
+    isValid: true
 })
