@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React from 'react';
 import FormContext from './context';
 
@@ -14,20 +15,20 @@ export default function wrapField (Component, type) {
         componentDidMount () {
             this.contextValue.fieldAdd(this.id, this.props.name, this.instance.current);
         }
-        componentWillUnmount () {
-            this.contextValue.fieldRemove(this.id);
-        }
         componentDidUpdate (prevProps) {
             if ( ( this.props.name || prevProps.name ) && this.props.name !== prevProps.name ) {
                 this.contextValue.fieldRename(this.id, this.props.name);
             }
+        }
+        componentWillUnmount () {
+            this.contextValue.fieldRemove(this.id);
         }
         change (value, error) {
             this.contextValue.dataChange(this.id, value, error)
         }
         finalRender (context) {
             this.contextValue = context
-            return <Component change={this.change} {...this.props} fieldId={this.id} ref={this.instance}/>
+            return <Component change={this.change} {...this.props} fieldId={this.id} ref={this.instance} />
         }
         render () {
             return (
@@ -38,6 +39,6 @@ export default function wrapField (Component, type) {
         }
     }
     return React.forwardRef((props, ref) => {
-        return <Field forwardedRef={ref} {...props}/>
+        return <Field forwardedRef={ref} {...props} />
     })
 }

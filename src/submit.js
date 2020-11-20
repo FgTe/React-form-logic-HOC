@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React from 'react';
 
 import FormContext from './context';
@@ -21,7 +22,7 @@ export default function withSubmitLogic (Component) {
             let { forwardedRef, fieldId, change, ...rest } = this.props;
             let disabled = this.props.hasOwnProperty('disabled') ? this.props.disabled : !context.isValid;
             this.props.change(this.props.value);
-            return <Component ref={forwardedRef} submit={this.submit} disabled={disabled} {...rest}/>;
+            return <Component ref={forwardedRef} submit={this.submit} disabled={disabled} {...rest} />;
         }
         render () {
             return (

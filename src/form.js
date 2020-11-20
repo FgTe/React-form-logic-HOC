@@ -28,15 +28,11 @@ export default function withFormLogic (Component) {
                 isValid: true
             };
         }
-        componentWillUnmount () {
-            if ( this.updateID !== null ) {
-                clearTimeout(this.updateID);
-            }
-        }
         componentDidCatch () {
-            if ( this.updateID !== null ) {
-                clearTimeout(this.updateID);
-            }
+            this.clearUpdate();
+        }
+        componentWillUnmount () {
+            this.clearUpdate();
         }
         get data () {
             let data = {};
@@ -49,9 +45,10 @@ export default function withFormLogic (Component) {
             return data;
         }
         get error () {
-            let error = {};
+            let error = null;
             for ( let id in this.fields ) {
                 if ( this.fields.hasOwnProperty(id) && this.fields[id].error) {
+                    error = error || {};
                     let field = this.fields[id];
                     this.propertyMerge(error, field.name || id, field.error);
                 }
@@ -59,7 +56,7 @@ export default function withFormLogic (Component) {
             return error;
         }
         propertyMerge (obj, key, value) {
-            if ( value ) {
+            if ( value !== undefined ) {
                 if ( obj[key] ) {
                     if ( obj[key] instanceof Array ) {
                         obj[key].push(value);
@@ -79,39 +76,42 @@ export default function withFormLogic (Component) {
                 if ( error !== prevError ) {
                     if ( error ) {
                         if ( this.contextValue.isValid ) {
-                            this.setValid(false, false);
+                            this.setValid(false);
                         }
-                    } else if ( !this.contextValue.isValid && Object.keys(this.error).length === 0 ) {
-                        this.setValid(true, false);
+                    } else if ( !this.contextValue.isValid && !this.error ) {
+                        this.setValid(true);
                     }
                 }
             }
         }
-        setValid (isValid, update) {
+        setValid (isValid) {
             if ( this.contextValue.isValid !== isValid ) {
                 this.contextValue = {
                     ...this.contextValue,
                     isValid
                 };
-                if ( update ) {
-                    if ( this.updateID !== null ) {
-                        clearTimeout(this.updateID);
-                    }
+                if ( this.updateID === null ) {
                     this.updateID = setTimeout(this.updateIsValid);
                 }
             }
         }
+        clearUpdate () {
+            if ( this.updateID !== null ) {
+                clearTimeout(this.updateID);
+                this.updateID = null;
+            }
+        }
         fieldAdd (id, name, instance) {
             this.fields[id] = { name, value: instance.value, error: instance.error, instance };
-            if ( this.contextValue.isValid && Object.keys(this.error).length > 0 ) {
-                this.setValid(false, true);
+            if ( this.contextValue.isValid && this.error ) {
+                this.setValid(false);
             }
         }
         fieldRemove (id) {
             if ( this.fields.hasOwnProperty(id) ) {
                 delete this.fields[id];
-                if ( !this.contextValue.isValid && Object.keys(this.error).length === 0 ) {
-                    this.setValid(true, true);
+                if ( !this.contextValue.isValid && !this.error ) {
+                    this.setValid(true);
                 }
             }
         }
@@ -128,14 +128,15 @@ export default function withFormLogic (Component) {
                 };
                 this.forceUpdate();
             }
-            if ( this.contextValue.isValid && this.props.onSubmit instanceof Function ) {
-                this.props.onSubmit(this.data);
+            if ( this.props.onSubmit instanceof Function ) {
+                this.props.onSubmit(this.contextValue.isValid, this.data, this.error);
             }
         }
         render () {
+            const { onSubmit, ...rest } = this.props
             return (
                 <FormContext.Provider value={this.contextValue}>
-                    <Component {...this.props}/>
+                    <Component {...rest} />
                 </FormContext.Provider>
             )
         }

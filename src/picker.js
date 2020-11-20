@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React from 'react';
 
 import warpField from './field';
@@ -14,7 +15,7 @@ export default function withPickerLogic (Component) {
             this.value = this.props.value;
             this.error = validate instanceof Function ? validate(this.value) : undefined;
             this.props.change(this.value, this.error);
-            return <Component ref={forwardedRef} value={this.value} error={this.error} {...rest}/>
+            return <Component ref={forwardedRef} value={this.value} error={this.error} {...rest} />
         }
     }
     return warpField(Picker, 'chackbox');

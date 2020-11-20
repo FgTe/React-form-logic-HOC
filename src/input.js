@@ -14,12 +14,12 @@ export default function withInputLogic (Component, externalTypeChack) {
     class Input extends React.Component {
         constructor (props) {
             super(props);
-            this.changeHandle = this.changeHandle.bind(this);
+            this.change = this.change.bind(this);
             this.value = this.props.defaultValue || '';
             this.error = null;
         }
-        changeHandle (value) {
-            if ( !props.hasOwnProperty('value') ) {
+        change (value) {
+            if ( !this.props.hasOwnProperty('value') ) {
                 this.value = value;
                 this.forceUpdate();
             }
@@ -49,7 +49,7 @@ export default function withInputLogic (Component, externalTypeChack) {
             this.error = this.validate(this.value);
             this.props.change(this.value, this.error);
             return (
-                <Component ref={forwardedRef} changeHandle={this.changeHandle} value={this.value} error={this.error} {...rest}/>
+                <Component ref={forwardedRef} change={this.change} value={this.value} error={this.error} {...rest} />
             );
         }
     }
