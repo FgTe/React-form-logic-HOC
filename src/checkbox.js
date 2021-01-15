@@ -1,18 +1,18 @@
-import React from 'react';
+import React from 'react'
 
-import warpField from './field';
-import CheckFieldComponent from './fieldType/check';
+import warpField from './field'
+import CheckFieldComponent from './fieldType/check'
 
-import FormContext from './context';
+import FormContext from './context'
 
-export default function withChackboxLogic(Component) {
+export default function withChackboxLogic (Component) {
   class Chackbox extends CheckFieldComponent {
-    static contextType = FormContext;
-    render() {
-      this.eachRender();
-      let { forwardedRef, change, checked, disabled, ...rest } = this.props;
-      return <Component ref={forwardedRef} change={this.change} checked={this.checked} disabled={this.context.submitting || disabled} {...rest} />
+    static contextType = FormContext
+    render () {
+      this.eachRender()
+      let { forwardedRef, change, checked, disabled, ...rest } = this.props
+      return <Component ref={forwardedRef} change={this.change} checked={this.checked} disabled={this.context.submitting || disabled} {...rest}/>
     }
   }
-  return warpField(Chackbox, 'chackbox');
+  return warpField(Chackbox, 'chackbox')
 }
