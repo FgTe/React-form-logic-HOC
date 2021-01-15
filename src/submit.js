@@ -1,36 +1,26 @@
-/* eslint-disable */
 import React from 'react';
 
 import FormContext from './context';
-import warpField from './field';
 
-export default function withSubmitLogic (Component) {
-    class Submit extends React.PureComponent {
-        constructor (props) {
-            super(props);
-            this.finalRender = this.finalRender.bind(this)
-            this.submit = this.submit.bind(this);
-        }
-        submit () {
-            if ( this.props.value !== undefined ) {
-                this.props.change(this.props.value);
-            }
-            this.contextValue.submit();
-        }
-        finalRender (context) {
-            this.contextValue = context;
-            let { forwardedRef, fieldId, change, ...rest } = this.props;
-            let disabled = this.props.hasOwnProperty('disabled') ? this.props.disabled : !context.isValid;
-            this.props.change(this.props.value);
-            return <Component ref={forwardedRef} submit={this.submit} disabled={disabled} {...rest} />;
-        }
-        render () {
-            return (
-                <FormContext.Consumer>
-                    {this.finalRender}
-                </FormContext.Consumer>
-            )
-        }
+export default function withSubmitLogic(Component) {
+  class Submit extends React.PureComponent {
+    static contextType = FormContext;
+    constructor(props) {
+      super(props);
     }
-    return warpField(Submit, 'submit');
+    submit = () => {
+      this.context.submit({
+        name: this.props.name,
+        value: this.props.value
+      });
+    }
+    render() {
+      let { forwardedRef, change, ...rest } = this.props;
+      let disabled = this.props.hasOwnProperty('disabled') ? this.props.disabled : !this.context.isValid || this.context.submitting;
+      return <Component ref={forwardedRef} submit={this.submit} disabled={disabled} {...rest} submitting={this.context.submitting}/>;
+    }
+  }
+  return React.forwardRef((props, ref) => {
+    return <Submit forwardedRef={ref} {...props} />
+  });
 }

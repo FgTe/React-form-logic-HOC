@@ -1,28 +1,18 @@
-/* eslint-disable */
 import React from 'react';
 
 import warpField from './field';
+import CheckFieldComponent from './fieldType/check';
 
-export default function withChackboxLogic (Component) {
-    class Chackbox extends React.Component {
-        constructor (props) {
-            super(props);
-            this.change = this.change.bind(this);
-            this.checked = this.props.checked || false
-            this.value = this.checked ? this.props.value : undefined;
-        }
-        change (checked) {
-            if (!this.props.hasOwnProperty('checked')) {
-                this.checked = checked;
-                this.forceUpdate();
-            }
-        }
-        render () {
-            let { fieldId, forwardedRef, change, checked, ...rest } = this.props;
-            if ( this.props.hasOwnProperty('checked') ) this.checked = checked;
-            this.props.change(this.checked ? this.props.value : undefined);
-            return <Component ref={forwardedRef} change={this.change} checked={this.checked} {...rest} />
-        }
+import FormContext from './context';
+
+export default function withChackboxLogic(Component) {
+  class Chackbox extends CheckFieldComponent {
+    static contextType = FormContext;
+    render() {
+      this.eachRender();
+      let { forwardedRef, change, checked, disabled, ...rest } = this.props;
+      return <Component ref={forwardedRef} change={this.change} checked={this.checked} disabled={this.context.submitting || disabled} {...rest} />
     }
-    return warpField(Chackbox, 'chackbox');
+  }
+  return warpField(Chackbox, 'chackbox');
 }
