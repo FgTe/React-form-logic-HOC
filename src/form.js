@@ -1,23 +1,22 @@
-import React from 'react'
+import React from 'react';
 
-import FormContext from './context'
+import FormContext from './context';
 
 export default function withFormLogic (Component) {
   return class Form extends React.PureComponent {
-    static displayName = `withFormLogic(${Component.name})`
+    static displayName = `withFormLogic(${Component.name})`;
     constructor (props) {
-      super(props)
+      super(props);
       this.updateIsValid = () => {
-        this.forceUpdate()
-        this.updateID = null
-      }
-      this.fields = {/*id: {name, value, error, instance}*/ }
-      this.promisedValue = {/*id: promise*/}
-      this.promisedError = {/*id: promise*/}
-      this.updateID = null
-      this.submitID = null
-      this.submitValue = null
-      this.locked = false
+        this.updateID = null;
+        this.forceUpdate();
+      };
+      this.fields = {/*id: {name, value, error, instance}*/ };
+      this.promised = {/*id: promise*/};
+      this.updateID = null;
+      this.submitID = Date.now();
+      this.submitSnapshot = {};
+      this.locked = false;
       this.contextValue = {
         dataChange: this.dataChange,
         fieldAdd: this.fieldAdd,
@@ -29,98 +28,100 @@ export default function withFormLogic (Component) {
         isValid: true
       };
     }
-    componentDidCatch () {
-      this.clearUpdate()
-      this.clearSubmit()
-    }
+    // componentDidCatch () {
+    //   this.clearUpdate();
+    // }
     componentWillUnmount () {
-      this.clearUpdate()
-      this.clearSubmit()
+      this.clearUpdate();
     }
     get data () {
-      let data = {}
-      for ( let id in this.fields ) {
-        if ( this.fields.hasOwnProperty(id) && this.fields[id].name ) {
-          let field = this.fields[id]
-          this.propertyMerge(data, field.name, field.value)
+      return this.getData(this.fields)
+    }
+    getData (fields) {
+      let data = {};
+      for ( let id in fields ) {
+        if ( fields.hasOwnProperty(id) && fields[id].hasOwnProperty('name') ) {
+          let field = fields[id];
+          this.propertyMerge(data, field.name, field.value);
         }
       }
-      return data
+      return data;
     }
     get error () {
-      let error = null
-      for ( let id in this.fields ) {
-        if ( this.fields.hasOwnProperty(id) && this.fields[id].error ) {
-          error = error || {}
-          let field = this.fields[id]
-          this.propertyMerge(error, field.name || id, field.error)
+      return this.getError(this.fields)
+    }
+    getError (fields) {
+      let error = null;
+      for ( let id in fields ) {
+        if ( fields.hasOwnProperty(id) && fields[id].error ) {
+          error = error || {};
+          let field = fields[id];
+          this.propertyMerge(error, field.name || id, field.error);
         }
       }
-      return error
+      return error;
     }
     propertyMerge (obj, key, value) {
       if ( value !== undefined ) {
         if ( obj[key] ) {
           if ( obj[key] instanceof Array ) {
-            obj[key].push(value)
+            obj[key].push(value);
           } else {
-            obj[key] = [obj[key], value]
+            obj[key] = [obj[key], value];
           }
         } else {
-          obj[key] = value
+          obj[key] = value;
         }
       }
     }
-    dataChange = (id, value, error) => {
-      if ( this.fields.hasOwnProperty(id) ) {
-        const field = this.fields[id]
-        let prevValue = field.value
-        let prevError = field.error
-        this.fields[id].value = value
-        this.fields[id].error = error
-        if ( value !== prevValue ) {
-          if ( value && value.then instanceof Function ) {
-            this.promisedValue[id] = value
-            let handle = () => {
-              if ( this.promisedValue[id] === value ) {
-                delete this.promisedValue[id]
+    dataChange = (id, value, error, promised) => {
+      if (this.fields.hasOwnProperty(id)) {
+        const field = this.fields[id];
+        let prevError = field.error;
+        let prevPromisedValue = field.promised;
+        field.value = value;
+        field.error = error;
+        field.promised = promised;
+        if ( promised !== prevPromisedValue ) {
+          if ( promised ) {
+            this.promised[id] = promised;
+            let submitID = this.submitID;
+            let handle = (valueOrError, args) => {
+              let promiseStore;
+              const snapshot = this.submitSnapshot && this.submitSnapshot[submitID];
+              if ( snapshot ) {
+                if ( args.length && snapshot.fields[id] ) {
+                  const valOrErr = args[0];
+                  snapshot.fields[id][valueOrError] = valOrErr;
+                }
+                promiseStore = snapshot.promised;
+                if ( this.promised[id] === promised ) {
+                  delete this.promised[id];
+                }
+              } else {
+                promiseStore = this.promised;
+              }
+              if ( promiseStore[id] === promised ) {
+                delete promiseStore[id];
                 if ( this.contextValue.submitting ) {
-                  if ( this.submitID === null ) {
-                    this.submitID = setTimeout(() => {
-                      this.submit()
-                      this.submitID = null
-                    })
-                  }
+                  this.submit(submitID);
                 }
               }
             }
-            value.then(handle, handle)
+            promised.then((...args) => {
+              handle('value', args);
+            }, (...args) => {
+              handle('error', args);
+            });
           }
         }
-        if ( error !== prevError ) {
-          if ( error && error.then instanceof Function ) {
-            this.promisedError[id] = error
-            let handle = () => {
-              if ( this.promisedError[id] === error ) {
-                delete this.promisedError[id]
-                if ( this.contextValue.submitting ) {
-                  if ( this.submitID === null ) {
-                    this.submitID = setTimeout(() => {
-                      this.submit()
-                      this.submitID = null
-                    })
-                  }
-                }
-              }
-            }
-            error.then(handle, handle)
-          }
+        if ( error != prevError ) {
           if ( error ) {
             if ( this.contextValue.isValid ) {
-              this.setValid(false)
+              this.setValid(false);
             }
           } else if ( !this.contextValue.isValid && !this.error ) {
-            this.setValid(true)
+            this.setValid(true);
           }
         }
       }
@@ -130,27 +131,26 @@ export default function withFormLogic (Component) {
         this.contextValue = {
           ...this.contextValue,
           isValid
-        }
+        };
         if ( this.updateID === null ) {
-          this.updateID = setTimeout(this.updateIsValid)
+          this.updateID = setTimeout(this.updateIsValid);
         }
       }
     }
     clearUpdate () {
       if ( this.updateID !== null ) {
-        clearTimeout(this.updateID)
-        this.updateID = null
+        clearTimeout(this.updateID);
+        this.updateID = null;
       }
     }
-    clearSubmit () {
-      if ( this.submitID !== null ) {
-        clearTimeout(this.submitID)
-        this.submitID = null
-      }
-    }
-    fieldAdd = (id, name, instance) => {
-      this.fields[id] = { name, instance }
-      this.dataChange(id, instance.value, instance.error)
+    fieldAdd = (field) => {
+      const id = field.id;
+      const instance = field.instance
+      this.fields[id] = Object.assign(
+        { instance: instance },
+        field.hasOwnProperty('name') ? { name: field.name } : null
+      );
+      this.dataChange(id, instance.value, instance.error, instance.promised);
     }
     fieldRemove = (id) => {
       if ( this.fields.hasOwnProperty(id) ) {
@@ -160,74 +160,110 @@ export default function withFormLogic (Component) {
         }
       }
     }
-    fieldRename = (id, name) => {
+    fieldRename = (field) => {
+      const id = field.id;
       if ( this.fields.hasOwnProperty(id) ) {
-        this.fields[id].name = name
+        if ( field.hasOwnProperty('name') ) {
+          this.fields[id].name = field.name;
+        } else if ( this.fields[id].hasOwnProperty('name') ) {
+          delete this.fields[id].name
+        }
       }
     }
-    submit = async (submitValue) => {
-      if ( Object.keys(this.promisedValue).length || Object.keys(this.promisedError).length ) {
+    submit = async (submitID, submitValue) => {
+      const snapshot = submitID && this.submitSnapshot[submitID];
+      const promiseStore = snapshot ? snapshot.promised : this.promised;
+      console.log('submit', submitID, snapshot)
+      if ( Object.keys(promiseStore).length ) {
         if ( !this.contextValue.submitting ) {
+          if ( this.props.snapshot ) {
+            const newSnapshot = {
+              fields: {},
+              promised: {
+                ...this.promised
+              }
+            }
+            for ( let id in this.fields ) {
+              const field = this.fields[id]
+              newSnapshot.fields[id] = Object.assign(
+                { value: field.value, error: field.error },
+                field.hasOwnProperty('name') ? { name: field.name } : null
+              )
+            }
+            this.submitSnapshot[this.submitID] = newSnapshot
+            this.submitID = Date.now()
+          }
           this.contextValue = {
             ...this.contextValue,
             submitting: true
-          }
-          this.forceUpdate()
+          };
+          this.forceUpdate();
         }
       } else {
         if ( this.locked ) {
-          return
+          return;
         }
-        this.locked = true
-        let update = false
-        let nextContext = {}
+        this.locked = true;
+        let update = false;
+        let nextContext = {};
         if ( !this.contextValue.submitted ) {
-          nextContext.submitted = true
-          update = true
+          nextContext.submitted = true;
+          update = true;
         }
         if ( !this.contextValue.submitting ) {
-          nextContext.submitting = true
-          update = true
+          nextContext.submitting = true;
+          update = true;
         }
         if ( update ) {
           this.contextValue = {
             ...this.contextValue,
             ...nextContext
-          }
-          this.forceUpdate()
+          };
+          this.forceUpdate();
+        }
+        let data, error, isValid;
+        if ( snapshot ) {
+          data = this.getData(snapshot.fields)
+          error = this.getError(snapshot.fields)
+          isValid = !error
+          console.log('-----', snapshot, data, error)
+        } else {
+          data = this.data
+          error = this.error
+          isValid = this.contextValue.isValid
         }
         try {
           if ( this.props.onSubmit instanceof Function ) {
-            if ( submitValue ) {
-              this.submitValue = submitValue
-            }
             await this.props.onSubmit(
-              this.contextValue.isValid,
+              isValid,
               Object.assign(
                 {},
-                this.submitValue && this.submitValue.hasOwnProperty('name') && this.submitValue.hasOwnProperty('value') && this.submitValue.name ? { [this.submitValue.name]: this.submitValue.value } : null,
-                this.data
+                data,
+                submitValue || null
               ),
-              this.error
+              error
             );
           }
         } finally {
-          this.locked = false
+          if ( snapshot ) {
+            delete this.submitSnapshot[submitID]
+          }
+          this.locked = false;
           this.contextValue = {
             ...this.contextValue,
             submitting: false
-          }
-          this.forceUpdate()
+          };
+          this.forceUpdate();
         }
       }
     }
     render () {
-      const { onSubmit, ...rest } = this.props
+      const { onSubmit, ...rest } = this.props;
       return (
         <FormContext.Provider value={this.contextValue}>
-          <Component {...rest}/>
+          <Component {...rest} />
         </FormContext.Provider>
-      )
+      );
     }
   }
 }
