@@ -8,46 +8,47 @@ export default class extends React.Component {
   constructor(props) {
     super(props);
     this.change = this.change.bind(this);
-    this.prevValue = '';
-    this.value = this.props.defaultValue || '';
+    this.value = '';
     this.innerError = null;
-    this.error = null;
     this.promised = null;
+    if ( this.props.hasOwnProperty('defaultValue') ) {
+      this.value = this.props.defaultValue;
+    }
+    this.error = this.validate(this.value);
   }
   change(value, error, promised) {
-    let update
+    let update = false;
     if ( promised !== this.promised ) {
-      this.promised = promised
-      update = true
+      this.promised = promised;
+      update = true;
     }
-    if (!this.props.hasOwnProperty('value')) {
+    if ( !this.props.hasOwnProperty('value') ) {
       this.value = value;
-      update = true
+      this.error = this.validate(value);
+      update = true;
     }
     if ( error !== this.innerError ) {
       this.innerError = error;
-      update = true
+      update = true;
     }
     if ( update ) {
-      this.forceUpdate()
+      this.forceUpdate();
     }
   }
   validate(value) {
-    if (this.innerError) {
+    if ( this.innerError ) {
       return this.innerError;
-    } else if (this.error && this.error.then instanceof Function && this.prevValue === value) {
-      return this.error;
     } else {
       let error;
-      if (this.props.required && !value) {
+      if ( this.props.required && !value ) {
         error = 'required';
       } else {
-        if (this.props.validate) {
-          if (typeof this.props.validate === 'function') {
+        if ( this.props.validate ) {
+          if ( typeof this.props.validate === 'function' ) {
             error = this.props.validate(value);
-          } else if (this.props.validate instanceof RegExp) {
+          } else if ( this.props.validate instanceof RegExp ) {
             error = this.props.validate.test(value) ? null : 'pattern';
-          } else if (typeof this.props.validate === 'string') {
+          } else if ( typeof this.props.validate === 'string' ) {
             const typeCheck = baceTypeCheck[this.props.validate] || (
               this.typeCheck ? (
                 this.typeCheck instanceof Function ? this.typeCheck : this.typeCheck[this.props.validate]
@@ -57,15 +58,27 @@ export default class extends React.Component {
               error = typeCheck(value);
             }
           }
+          if ( error?.then && error !== this.error ) {
+            const handle = (err) => {
+              if ( this.error === error ) {
+                this.error = err || null;
+                this.forceUpdate();
+              }
+            }
+            error.then(handle, handle);
+          }
         }
       }
       return error;
     }
   }
   eacheRender() {
-    this.prevValue = this.value;
-    if (this.props.hasOwnProperty('value')) this.value = this.props.value;
-    this.error = this.validate(this.value);
+    if ( this.props.hasOwnProperty('value') ) {
+      if ( this.props.value !== this.value ) {
+        this.error = this.validate(this.props.value);
+      }
+      this.value = this.props.value;
+    }
     this.props.change(this.value, this.error, this.promised);
   }
 }

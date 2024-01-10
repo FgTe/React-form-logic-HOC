@@ -3,16 +3,25 @@ import React from 'react';
 import FormContext from './context';
 
 export default function withSubmitLogic(Component) {
-  class Submit extends React.PureComponent {
+  class Submit extends React.Component {
     static contextType = FormContext;
     constructor(props) {
       super(props);
     }
-    submit = () => {
-      this.context.submit('', this.props.hasOwnProperty('name') && this.props.hasOwnProperty('value') ? {
-        name: this.props.name,
-        value: this.props.value
-      } : null);
+    submit = (e) => {
+      let value
+      this.context.submit('', (
+        this.props.hasOwnProperty('name')
+        && (
+          value = (
+            e.value
+            || ( this.props.hasOwnProperty('value') ? this.props.value : null )
+          )
+        ) ? {
+          name: this.props.name,
+          value: value
+        } : null
+      ));
     }
     render() {
       let { forwardedRef, change, ...rest } = this.props;
