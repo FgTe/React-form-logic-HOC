@@ -11,18 +11,17 @@ export default function withFormLogic (Component) {
       this.updateIsValid = () => {
         this.updateID = null;
         if ( !this.unmount ) {
-          this.forceUpdate(() => {
-            if ( this.props.onValid instanceof Function ) {
-              this.props.onValid(this.contextValue.isValid)
-            }
-          });
+          if ( this.props.onValid instanceof Function ) {
+            this.props.onValid(this.contextValue.isValid)
+          }
+          this.forceUpdate();
         }
       };
       this.fields = {/*id: {name, value, error, instance}*/ };
       this.promised = {/*id: promise*/};
       this.updateID = null;
-      this.submitID = Date.now();
-      this.submitSnapshot = {};
+      // this.submitID = Date.now();
+      // this.submitSnapshot = {};
       this.locked = false;
       this.submitting = null;
       this.contextValue = {
@@ -101,20 +100,20 @@ export default function withFormLogic (Component) {
           field.promised = promised;
           if ( promised ) {
             this.promised[id] = promised;
-            let submitID = this.submitID;
+            // let submitID = this.submitID;
             let handle = (valueOrError, args) => {
               let promiseStore;
-              const snapshot = this.submitSnapshot[submitID];
-              if ( snapshot ) {
-                if ( args.length && snapshot.fields[id] ) {
-                  const valOrErr = args[0];
-                  snapshot.fields[id][valueOrError] = valOrErr;
-                }
-                promiseStore = snapshot.promised;
-                if ( this.promised[id] === promised ) {
-                  delete this.promised[id];
-                }
-              } else {
+              // const snapshot = this.submitSnapshot[submitID];
+              // if ( snapshot ) {
+              //   if ( args.length && snapshot.fields[id] ) {
+              //     const valOrErr = args[0];
+              //     snapshot.fields[id][valueOrError] = valOrErr;
+              //   }
+              //   promiseStore = snapshot.promised;
+              //   if ( this.promised[id] === promised ) {
+              //     delete this.promised[id];
+              //   }
+              // } else {
                 if ( args.length ) {
                   const valOrErr = args[0];
                   if ( this.fields[id] ) {
@@ -122,11 +121,11 @@ export default function withFormLogic (Component) {
                   }
                 }
                 promiseStore = this.promised;
-              }
+              // }
               if ( promiseStore[id] === promised ) {
                 delete promiseStore[id];
                 if ( this.contextValue.submitting ) {
-                  this.submit(submitID);
+                  this.submit(/*submitID*/);
                 }
               }
             }
@@ -175,7 +174,7 @@ export default function withFormLogic (Component) {
         if ( this.promised[id] === promised ) {
           delete this.promised[id];
           if ( this.contextValue.submitting ) {
-            this.submit(submitID);
+            this.submit(/*submitID*/);
           }
         }
       }
@@ -190,7 +189,7 @@ export default function withFormLogic (Component) {
         }
       }
     }
-    submit = (submitID, submitValue) => {
+    submit = (/*submitID, */submitValue) => {
       if ( !this.submitting ) {
         this.submitting = {};
         this.submitting.promise = new Promise((resolve, reject) => {
@@ -206,27 +205,27 @@ export default function withFormLogic (Component) {
           })
         })
       }
-      const snapshot = submitID && this.submitSnapshot[submitID];
-      const promiseStore = snapshot ? snapshot.promised : this.promised;
+      // const snapshot = submitID && this.submitSnapshot[submitID];
+      const promiseStore = /*snapshot ? snapshot.promised : */this.promised;
       if ( Object.keys(promiseStore).length ) {
         if ( !this.contextValue.submitting ) {
-          if ( this.props.snapshot ) {
-            const newSnapshot = {
-              fields: {},
-              promised: {
-                ...this.promised
-              }
-            }
-            for ( let id in this.fields ) {
-              const field = this.fields[id]
-              newSnapshot.fields[id] = Object.assign(
-                { value: field.value, error: field.error },
-                field.hasOwnProperty('name') ? { name: field.name } : null
-              )
-            }
-            this.submitSnapshot[this.submitID] = newSnapshot
-            this.submitID = Date.now()
-          }
+          // if ( this.props.snapshot ) {
+          //   const newSnapshot = {
+          //     fields: {},
+          //     promised: {
+          //       ...this.promised
+          //     }
+          //   }
+          //   for ( let id in this.fields ) {
+          //     const field = this.fields[id]
+          //     newSnapshot.fields[id] = Object.assign(
+          //       { value: field.value, error: field.error },
+          //       field.hasOwnProperty('name') ? { name: field.name } : null
+          //     )
+          //   }
+          //   this.submitSnapshot[this.submitID] = newSnapshot
+          //   this.submitID = Date.now()
+          // }
           this.contextValue = {
             ...this.contextValue,
             submitting: true
@@ -256,15 +255,15 @@ export default function withFormLogic (Component) {
           this.forceUpdate();
         }
         let data, error, isValid;
-        if ( snapshot ) {
-          data = this.getData(snapshot.fields)
-          error = this.getError(snapshot.fields)
-          isValid = !error
-        } else {
+        // if ( snapshot ) {
+        //   data = this.getData(snapshot.fields)
+        //   error = this.getError(snapshot.fields)
+        //   isValid = !error
+        // } else {
           data = this.data
           error = this.error
           isValid = this.contextValue.isValid
-        }
+        // }
         try {
           if ( this.props.onSubmit instanceof Function ) {
             const submitRuner = this.props.onSubmit(
@@ -290,9 +289,9 @@ export default function withFormLogic (Component) {
         } catch (err) {
           this.submitting.reject(err)
         } finally {
-          if ( snapshot ) {
-            delete this.submitSnapshot[submitID]
-          }
+          // if ( snapshot ) {
+          //   delete this.submitSnapshot[submitID]
+          // }ni
           this.locked = false;
           this.contextValue = {
             ...this.contextValue,

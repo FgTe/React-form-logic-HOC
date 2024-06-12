@@ -4,17 +4,17 @@ import FormContext from './context';
 
 export default function withSubmitLogic(Component) {
   class Submit extends React.Component {
-    static contextType = FormContext;
     constructor(props) {
       super(props);
+      this.contextValue = FormContext._currentValue;
     }
-    submit = (e) => {
-      let value
-      this.context.submit('', (
+    submit = async (e) => {
+      let value;
+      return await this.contextValue.submit(/*'', */(
         this.props.hasOwnProperty('name')
         && (
           value = (
-            e.value
+            e?.value
             || ( this.props.hasOwnProperty('value') ? this.props.value : null )
           )
         ) ? {
@@ -23,10 +23,26 @@ export default function withSubmitLogic(Component) {
         } : null
       ));
     }
-    render() {
-      let { forwardedRef, change, ...rest } = this.props;
-      let disabled = this.props.hasOwnProperty('disabled') ? this.props.disabled : !this.context.isValid || this.context.submitting;
-      return <Component ref={forwardedRef} submit={this.submit} disabled={disabled} {...rest} submitting={this.context.submitting}/>;
+    finalRender = (context) => {
+      this.contextValue = context;
+      let { forwardedRef, ...rest } = this.props;
+      let disabled = this.props.hasOwnProperty('disabled') ? this.props.disabled : !this.contextValue.isValid || this.contextValue.submitting;
+      return (
+        <Component ref={forwardedRef}
+          submit={this.submit}
+          disabled={disabled}
+          {...rest}
+          submitting={this.contextValue.submitting}
+          isValid={this.contextValue.isValid}
+        />
+      )
+    }
+    render () {
+      return (
+        <FormContext.Consumer>
+          {this.finalRender}
+        </FormContext.Consumer>
+      )
     }
   }
   return React.forwardRef((props, ref) => {
